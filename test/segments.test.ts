@@ -312,8 +312,15 @@ describe("topic-tree extension entry", () => {
 		expect(toolPairsIntact(result.messages)).toBe(true);
 	});
 
-	it("keeps the turn-only projection when folding is off (positive control)", () => {
-		const { pi, fire } = fakePi({ "topic-tree": true });
+	it("folds by default and keeps the turn-only projection when folding is turned off", () => {
+		const folded = fakePi({ "topic-tree": true });
+		registerTopicTree(folded.pi as never, {});
+		folded.fire("session_start", {});
+		// Defaults: 8 calls per segment, 3 segments per fold -> 80 calls hide 6 segments.
+		const long = [user(1, PROMPT_TEXT), ...toolLoop(80)];
+		expect(folded.fire("context", { messages: long }, sessionCtx(long))[0]?.messages.length).toBeLessThan(long.length);
+		delete (globalThis as { [REGISTERED]?: boolean })[REGISTERED];
+		const { pi, fire } = fakePi({ "topic-tree": true, "topic-tree-fold-tool-calls": "0" });
 		registerTopicTree(pi as never, {});
 		fire("session_start", {});
 		const messages = [user(1, PROMPT_TEXT), ...toolLoop(40)];

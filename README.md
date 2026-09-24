@@ -11,19 +11,22 @@ tool.
 
 ## Benchmark
 
-113 questions about details from earlier in 15 real long working sessions
-(DeepSeek V4.1 Flash, answers graded against a reference):
+15 real long coding-agent sessions (tool results included), DeepSeek V4.1
+Flash, Pi 0.87.1:
 
-| Strategy | Correct | Input tokens per question |
-| --- | ---: | ---: |
-| Full history | 94.7% | 36,378 (100%) |
-| **thin + `recall_topic`** | **97.3%** | **12,905 (35%)** |
-| Pi's built-in compaction | 16.8% | 6,023 (17%) |
-| Truncate to recent turns | 19.5% | 10,685 (29%) |
+| | Plain Pi | topic-tree (default) |
+| --- | --- | --- |
+| First compaction, 128k window | median turn 4 (1–15), 2–42 per session | 13 of 15 sessions never compact |
+| First compaction, 200k window | median turn 8 (1–17) | never (15/15) |
+| Questions about earlier details, right where plain Pi compacts | 58.1% correct | **86.0%** (full history: 86.0%) |
+| Context sent at that point | 33,891 tokens (after compaction) | 25,013 tokens |
 
-Summaries and truncation lose exact details like hashes and paths. Recalling
-the turn on demand keeps them, at about a third of the input. Setup, the topic
-mode, classification accuracy and caveats are in [BENCHMARKS.md](BENCHMARKS.md).
+Compaction summaries keep goals and decisions but drop exact values like
+hashes, ports and counts; topic-tree keeps the history and reads it back with
+`recall_topic` when needed. The trade-off: a question that needs hidden
+detail costs several recall round trips. Setup, per-condition numbers,
+costs, classification accuracy and caveats are in
+[BENCHMARKS.md](BENCHMARKS.md).
 
 ## Install
 
@@ -49,17 +52,20 @@ for every run with `PI_TOPIC_TREE=1` in the environment.
   the release config", "reply in English") are collected into a pinned
   `global` node that is always sent.
 - **Projection.** Only the request sent to the model changes. Two modes:
-  - `thin` (default): from the first turn, the model sees the standing rules,
-    a one-line-per-topic index and the last few turns; everything older is
-    pulled with `recall_topic`.
+  - `thin` (default): from the first turn, older work is replaced by an
+    index and pulled back with `recall_topic` on demand. With tool-loop
+    folding (the default, below) every user message stays verbatim and older
+    assistant and tool steps fold into a segment index; with folding off, the
+    model sees the standing rules, a one-line-per-topic index and the last
+    few turns.
   - `topic`: once the context passes a share of the window, the current
     topic's turns stay verbatim and other topics are replaced by their
     summaries.
-- **Tool-loop folding** (optional, thin mode). An agent working through one
-  request can run hundreds of tool calls without a new user turn. With
-  `--topic-tree-fold-tool-calls <n>`, older tool-call segments of `n` calls
-  each fold into a deterministic index line (what was called on what, how many
-  errors). Every user message and every message injected by other extensions
+- **Tool-loop folding** (thin mode, on by default). An agent working through
+  one request can run hundreds of tool calls without a new user turn, so one
+  turn alone can outgrow the window. Older tool-call segments of 8 calls each
+  (`--topic-tree-fold-tool-calls <n>`, `0` turns folding off) fold into a
+  deterministic index line (what was called on what, how many errors). Every user message and every message injected by other extensions
   stays verbatim; the latest call of each non-standard "controller" tool stays
   whole with its result; unresolved tool errors are quoted in the index. Folds
   happen in discrete steps, so between folds each request is a byte-identical
@@ -82,7 +88,7 @@ forks, resumes and `/tree` navigation stay consistent.
 | `--topic-tree-model <provider/id>` | session model | Model used for classification and summaries |
 | `--topic-tree-recent-turns <n>` | 2 | thin: completed turns kept verbatim before the current one |
 | `--topic-tree-classify-every <n>` | 4 | thin: classify once this many turns have left the verbatim window |
-| `--topic-tree-fold-tool-calls <n>` | 0 (off) | thin: fold long tool loops, `n` tool calls per segment |
+| `--topic-tree-fold-tool-calls <n>` | 8 | thin: fold long tool loops, `n` tool calls per segment (`0` = off) |
 | `--topic-tree-fold-every <n>` | 3 | thin: segments hidden per fold |
 | `--topic-tree-min-turns <n>` | 8 | topic: user turns before classification starts |
 | `--topic-tree-trigger-ratio <r>` | 0.5 | topic: context share of the window at which projection starts |

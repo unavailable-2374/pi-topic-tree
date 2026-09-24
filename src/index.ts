@@ -9,9 +9,11 @@
  * Off by default. Enable with `--topic-tree`.
  *
  * Two projections:
- *   thin  (default) from the first turn, only standing constraints, a topic
- *         index and the last few turns are sent; the model pulls everything
- *         older with `recall_topic`.
+ *   thin  (default) from the first turn, older work is replaced by an index
+ *         and pulled back with `recall_topic`. Long tool loops fold in
+ *         segments (every user message stays verbatim); with folding off,
+ *         only standing constraints, a topic index and the last few turns
+ *         are sent.
  *   topic once the context passes a share of the window, the current topic's
  *         turns stay verbatim and the other topics are summarised.
  *
@@ -24,7 +26,7 @@
  *   --topic-tree-trigger-ratio <r>     topic: context share of the window at which projection starts (default 0.5)
  *   --topic-tree-target-ratio <r>      topic: context share the projection aims for (default 0.35)
  *   --topic-tree-keep-turns <n>        topic: most recent user turns always kept verbatim (default 3)
- *   --topic-tree-fold-tool-calls <n>   thin: also fold long tool loops inside a turn, n tool calls per segment (default off)
+ *   --topic-tree-fold-tool-calls <n>   thin: fold long tool loops, n tool calls per segment (default 8, 0 = off)
  *   --topic-tree-fold-every <n>        thin: segments hidden per fold when folding tool loops (default 3)
  *
  * PI_TOPIC_TREE=1 in the environment turns it on without the flag.
@@ -107,8 +109,8 @@ const NUMERIC_FLAGS = {
 		description: "Thin mode: classify once this many turns have left the verbatim window",
 	},
 	"topic-tree-fold-tool-calls": {
-		fallback: 0,
-		description: "Thin mode: fold long tool loops, this many tool calls per segment (0 = off)",
+		fallback: 8,
+		description: "Thin mode: fold long tool loops, this many tool calls per segment (default 8, 0 = off)",
 	},
 	"topic-tree-fold-every": {
 		fallback: 3,
@@ -344,7 +346,7 @@ export function registerTopicTree(pi: ExtensionAPI, env: NodeJS.ProcessEnv = pro
 		if (!active || !ctx.model) return;
 		const state = buildState(ctx.sessionManager.getBranch());
 		if (thinMode()) {
-			// With tool-loop folding on, every user message stays verbatim at any
+			// With tool-loop folding on (the default), every user message stays verbatim at any
 			// age, older turns' assistant and tool content folds in discrete,
 			// append-only steps (turn boundaries are segment boundaries), and long
 			// tool loops inside a turn fold the same way. The provider prefix cache

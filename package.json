@@ -1,6 +1,6 @@
 {
 	"name": "pi-topic-tree",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Topic-tree memory for the Pi coding agent: classifies turns into topic branches, sends the model a small projection of the conversation, and recalls anything older on demand.",
 	"type": "module",
 	"license": "MIT",
