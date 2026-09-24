@@ -9,7 +9,7 @@
 		"type": "git",
 		"url": "git+https://github.com/unavailable-2374/pi-topic-tree.git"
 	},
-	"files": ["src", "README.md", "LICENSE"],
+	"files": ["src", "README.md", "BENCHMARKS.md", "LICENSE"],
 	"pi": {
 		"extensions": ["./src/index.ts"]
 	},

@@ -9,6 +9,22 @@ conversation instead. Nothing is deleted: the session log is never rewritten,
 and the model reads any earlier turn back on demand with the `recall_topic`
 tool.
 
+## Benchmark
+
+113 questions about details from earlier in 15 real long working sessions
+(DeepSeek V4.1 Flash, answers graded against a reference):
+
+| Strategy | Correct | Input tokens per question |
+| --- | ---: | ---: |
+| Full history | 94.7% | 36,378 (100%) |
+| **thin + `recall_topic`** | **97.3%** | **12,905 (35%)** |
+| Pi's built-in compaction | 16.8% | 6,023 (17%) |
+| Truncate to recent turns | 19.5% | 10,685 (29%) |
+
+Summaries and truncation lose exact details like hashes and paths. Recalling
+the turn on demand keeps them, at about a third of the input. Setup, the topic
+mode, classification accuracy and caveats are in [BENCHMARKS.md](BENCHMARKS.md).
+
 ## Install
 
 ```bash
